@@ -11,6 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.latest-release.outputs.version }}
+      original_url: ${{ steps.latest-release.outputs.original_url }}
 
     steps:
       - name: Checkout repo
@@ -27,6 +28,7 @@ jobs:
         run: |
           RELEASE_INFO=$(curl -s https://api.github.com/repos/Voxelum/x-minecraft-launcher/releases/latest)
           VERSION=$(echo $RELEASE_INFO | jq -r '.tag_name' | sed 's/^v//')
+          ORIGINAL_URL=$(echo $RELEASE_INFO | jq -r '.html_url')
           DEB_URL=$(echo $RELEASE_INFO | jq -r '.assets[] | select(.name | endswith("-amd64.deb")) | .browser_download_url')
 
           if [ -z "$DEB_URL" ]; then
@@ -39,6 +41,7 @@ jobs:
           echo "DEB_URL=$DEB_URL" >> $GITHUB_ENV
           echo "DEB_SHA256=$DEB_SHA256" >> $GITHUB_ENV
           echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "original_url=$ORIGINAL_URL" >> $GITHUB_OUTPUT
           echo "Downloaded latest x86_64 release: $VERSION"
           echo "URL: $DEB_URL"
           echo "SHA256: $DEB_SHA256"
@@ -54,7 +57,6 @@ jobs:
                io.github.voxelum.xmcl.json > updated.json
 
           jq '.["build-options"] = {"arch": ["x86_64"]}' updated.json > io.github.voxelum.xmcl.json
-          # cat io.github.voxelum.xmcl.json
 
       - name: Build Flatpak
         run: |
@@ -89,8 +91,12 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          name: XMCL ${{ needs.build.outputs.version }} - ${{ env.CURRENT_DATE }} (x86_64)
-          tag_name: xmcl-${{ needs.build.outputs.version }}
+          name: v${{ needs.build.outputs.version }} - ${{ env.CURRENT_DATE }}
+          tag_name: v${{ needs.build.outputs.version }}
+          body: |
+            Flatpak build of XMCL v${{ needs.build.outputs.version }}
+
+            Source: ${{ needs.build.outputs.original_url }}
           draft: false
           make_latest: true
           files: |
