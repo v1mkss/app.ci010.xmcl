@@ -48,7 +48,6 @@ jobs:
 
       - name: Update manifest
         run: |
-          cat io.github.voxelum.xmcl.json
           jq --arg url "$DEB_URL" \
              --arg sha "$DEB_SHA256" \
              'reduce paths(objects | select(.name? == "xmcl" and .sources)) as $p (.;
@@ -58,7 +57,6 @@ jobs:
                io.github.voxelum.xmcl.json > updated.json
 
           jq '.["build-options"] = {"arch": ["x86_64"]}' updated.json > io.github.voxelum.xmcl.json
-          cat io.github.voxelum.xmcl.json
 
       - name: Build Flatpak
         run: |
