@@ -2,191 +2,97 @@ name: Build XMCL Flatpak
 
 on:
   schedule:
-    - cron: "0 */3 * * *" # Runs every 3 hours
+    - cron: "0 */3 * * *"
   workflow_dispatch:
+  pull_request:
 
 jobs:
-  check-and-build:
+  build:
     runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout repository
+      - name: Checkout repo
         uses: actions/checkout@v4
 
-      - name: Get latest release info
-        id: latest-release
-        run: |
-          LATEST_RELEASE=$(curl -s https://api.github.com/repos/Voxelum/x-minecraft-launcher/releases/latest)
-          LATEST_VERSION=$(echo $LATEST_RELEASE | jq -r '.tag_name')
-          DEB_URL=$(echo $LATEST_RELEASE | jq -r '.assets[] | select(.name | endswith("-amd64.deb")) | .browser_download_url')
-          DEB_SHA256=$(curl -sL $DEB_URL | sha256sum | cut -d ' ' -f 1)
-          echo "LATEST_VERSION=${LATEST_VERSION}" >> $GITHUB_ENV
-          echo "DEB_URL=${DEB_URL}" >> $GITHUB_ENV
-          echo "DEB_SHA256=${DEB_SHA256}" >> $GITHUB_ENV
-          echo "VERSION=${LATEST_VERSION#v}" >> $GITHUB_ENV
-
-      - name: Check if manifest exists
-        id: check-manifest
-        run: |
-          if [ -f "io.github.voxelum.xmcl/io.github.voxelum.xmcl.json" ]; then
-            CURRENT_VERSION=$(grep -o '"url": "https://github.com/Voxelum/x-minecraft-launcher/releases/download/v[0-9.]\+/xmcl-[0-9.]\+-amd64.deb"' io.github.voxelum.xmcl/io.github.voxelum.xmcl.json | grep -o '[0-9.]\+-amd64' | sed 's/-amd64//')
-            echo "CURRENT_VERSION=${CURRENT_VERSION}" >> $GITHUB_ENV
-            if [ "${CURRENT_VERSION}" = "${VERSION}" ]; then
-              echo "NO_UPDATE=true" >> $GITHUB_ENV
-            else
-              echo "NO_UPDATE=false" >> $GITHUB_ENV
-            fi
-          else
-            echo "NO_UPDATE=false" >> $GITHUB_ENV
-            mkdir -p io.github.voxelum.xmcl
-          fi
-
-      - name: Skip build if no update
-        if: env.NO_UPDATE == 'true'
-        run: |
-          echo "No new version available. Current version is ${CURRENT_VERSION}."
-          exit 0
-
-      - name: Update Flatpak manifest
-        if: env.NO_UPDATE == 'false'
-        run: |
-          cat > io.github.voxelum.xmcl/io.github.voxelum.xmcl.json << EOL
-          {
-            "app-id": "io.github.voxelum.xmcl",
-            "runtime": "org.freedesktop.Platform",
-            "runtime-version": "23.08",
-            "sdk": "org.freedesktop.Sdk",
-            "command": "xmcl-wrapper.sh",
-            "finish-args": [
-              "--share=ipc",
-              "--share=network",
-              "--socket=x11",
-              "--socket=wayland",
-              "--socket=pulseaudio",
-              "--device=dri",
-              "--filesystem=home",
-              "--talk-name=org.freedesktop.Notifications",
-              "--talk-name=org.freedesktop.secrets",
-              "--talk-name=com.discordapp.Discord",
-              "--own-name=org.discordapp.Discord.discordrpc",
-              "--system-talk-name=org.freedesktop.DBus",
-              "--talk-name=org.kde.StatusNotifierWatcher"
-            ],
-            "add-build-extensions": {
-              "org.freedesktop.Platform.ffmpeg-full": {
-                "directory": "lib/ffmpeg",
-                "version": "23.08",
-                "add-ld-path": "."
-              }
-            },
-            "modules": [
-              {
-                "name": "opengl-dirs",
-                "buildsystem": "simple",
-                "build-commands": [
-                  "mkdir -p /app/lib/GL"
-                ]
-              },
-              {
-                "name": "xmcl",
-                "buildsystem": "simple",
-                "build-commands": [
-                  "mkdir -p /app/bin",
-                  "mkdir -p /app/share/applications",
-                  "mkdir -p /app/share/icons/hicolor/512x512/apps",
-                  "mkdir -p /app/lib/ffmpeg",
-                  "ar x xmcl.deb",
-                  "tar xf data.tar.xz",
-                  "cp -r opt/xmcl/* /app/bin/",
-                  "cp usr/share/applications/xmcl.desktop /app/share/applications/io.github.voxelum.xmcl.desktop",
-                  "cp usr/share/icons/hicolor/512x512/apps/xmcl.png /app/share/icons/hicolor/512x512/apps/io.github.voxelum.xmcl.png",
-                  "sed -i 's|Exec=.*|Exec=/app/bin/xmcl-wrapper.sh|g' /app/share/applications/io.github.voxelum.xmcl.desktop",
-                  "sed -i 's|Icon=.*|Icon=io.github.voxelum.xmcl|g' /app/share/applications/io.github.voxelum.xmcl.desktop",
-                  "chmod +x /app/bin/xmcl",
-                  "echo -e '#!/bin/sh\\n/app/bin/xmcl --no-sandbox' > /app/bin/xmcl-wrapper.sh",
-                  "chmod +x /app/bin/xmcl-wrapper.sh"
-                ],
-                "sources": [
-                  {
-                    "type": "file",
-                    "url": "${DEB_URL}",
-                    "dest-filename": "xmcl.deb",
-                    "sha256": "${DEB_SHA256}"
-                  }
-                ]
-              }
-            ],
-            "add-extensions": {
-              "org.freedesktop.Platform.GL": {
-                "directory": "lib/GL",
-                "version": "23.08",
-                "versions": "23.08;1.4",
-                "subdirectories": true,
-                "no-autodownload": true,
-                "autodelete": false,
-                "add-ld-path": "lib",
-                "merge-dirs": "vulkan/icd.d;glvnd/egl_vendor.d;OpenCL/vendors",
-                "download-if": "active-gl-driver",
-                "enable-if": "active-gl-driver"
-              }
-            },
-            "cleanup": ["/include", "/lib/pkgconfig"]
-          }
-          EOL
-
-          cat > io.github.voxelum.xmcl/build.sh << EOL
-          #!/bin/bash
-          flatpak-builder --force-clean build-dir io.github.voxelum.xmcl.json --repo=repo
-          flatpak build-bundle repo xmcl-${VERSION}.flatpak io.github.voxelum.xmcl
-          EOL
-
-          chmod +x io.github.voxelum.xmcl/build.sh
-
-      - name: Install Flatpak
-        if: env.NO_UPDATE == 'false'
+      - name: Setup Flatpak
         run: |
           sudo apt-get update
           sudo apt-get install -y flatpak flatpak-builder
+          flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
 
-      - name: Add Flathub repository
-        if: env.NO_UPDATE == 'false'
+      - name: Get latest XMCL release
+        id: latest-release
         run: |
-          sudo flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
+          RELEASE_INFO=$(curl -s https://api.github.com/repos/Voxelum/x-minecraft-launcher/releases/latest)
+          VERSION=$(echo $RELEASE_INFO | jq -r '.tag_name' | sed 's/^v//')
+          # Явно фільтруємо лише amd64 (x86_64) версію
+          DEB_URL=$(echo $RELEASE_INFO | jq -r '.assets[] | select(.name | endswith("-amd64.deb")) | .browser_download_url')
+
+          # Перевіряємо, чи знайдений URL не порожній
+          if [ -z "$DEB_URL" ]; then
+            echo "Error: Could not find x86_64 (amd64) release package"
+            exit 1
+          fi
+
+          DEB_SHA256=$(curl -sL $DEB_URL | sha256sum | cut -d ' ' -f 1)
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "DEB_URL=$DEB_URL" >> $GITHUB_ENV
+          echo "DEB_SHA256=$DEB_SHA256" >> $GITHUB_ENV
+          echo "Downloaded latest x86_64 release: $VERSION"
+          echo "URL: $DEB_URL"
+          echo "SHA256: $DEB_SHA256"
+
+      - name: Update manifest
+        run: |
+          # Додаємо явне обмеження на архітектуру x86_64
+          jq --arg url "$DEB_URL" \
+             --arg sha "$DEB_SHA256" \
+             --arg ver "$VERSION" \
+             '.modules[1].sources[0].url = $url |
+              .modules[1].sources[0].sha256 = $sha |
+              .modules[1].sources[0].dest-filename = "xmcl.deb" |
+              .["build-options"] = {"arch": ["x86_64"]}' \
+              io.github.voxelum.xmcl.json > io.github.voxelum.xmcl.updated.json
+          mv io.github.voxelum.xmcl.updated.json io.github.voxelum.xmcl.json
+          cat io.github.voxelum.xmcl.json
 
       - name: Build Flatpak
-        if: env.NO_UPDATE == 'false'
         run: |
-          cd io.github.voxelum.xmcl
-          ./build.sh
+          mkdir -p xmcl
+          flatpak install -y flathub org.freedesktop.Platform//23.08 org.freedesktop.Sdk//23.08
+          # Додаємо обмеження на архітектуру при збірці
+          flatpak-builder --force-clean --arch=x86_64 build-dir io.github.voxelum.xmcl.json --repo=xmcl
+          flatpak build-bundle xmcl xmcl-${{ env.VERSION }}-x86_64.flatpak io.github.voxelum.xmcl
 
-      - name: Upload Flatpak
-        if: env.NO_UPDATE == 'false'
+      - name: Upload Flatpak bundle
         uses: actions/upload-artifact@v4
         with:
-          name: xmcl-flatpak
-          path: io.github.voxelum.xmcl/xmcl-${{ env.VERSION }}.flatpak
+          name: xmcl-flatpak-x86_64
+          path: xmcl-${{ env.VERSION }}-x86_64.flatpak
 
-      - name: Create Release
-        if: env.NO_UPDATE == 'false'
-        uses: softprops/action-gh-release@v1
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
         with:
+          name: xmcl-flatpak-x86_64
+
+      - name: Get current date
+        id: date
+        run: echo "CURRENT_DATE=$(date +'%Y%m%d')" >> $GITHUB_ENV
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: XMCL ${{ env.VERSION }} - ${{ env.CURRENT_DATE }} (x86_64)
           tag_name: xmcl-${{ env.VERSION }}
-          name: XMCL Flatpak ${{ env.VERSION }}
-          body: |
-            X Minecraft Launcher (XMCL) version ${{ env.VERSION }}
-
-            [Original release](https://github.com/Voxelum/x-minecraft-launcher/releases/tag/${{ env.LATEST_VERSION }})
-
-            This is an automatically built Flatpak package.
+          draft: false
+          make_latest: true
           files: |
-            io.github.voxelum.xmcl/xmcl-${{ env.VERSION }}.flatpak
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Commit and push changes
-        if: env.NO_UPDATE == 'false'
-        run: |
-          git config --global user.name "GitHub Actions"
-          git config --global user.email "actions@github.com"
-          git add io.github.voxelum.xmcl/
-          git commit -m "Update XMCL to version ${{ env.VERSION }}"
-          git push
+            xmcl-*-x86_64.flatpak
