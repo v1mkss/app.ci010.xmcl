@@ -15,7 +15,7 @@ Stellen Sie sicher, dass Flatpak auf Ihrem System installiert ist. Falls nicht, 
 Laden Sie die neueste Version von [XMCL](https://github.com/v1mkss/io.github.voxelum.xmcl/releases/latest) herunter.
 Zur Installation führen Sie aus:
 ```sh
-flatpak install ./xmcl.flatpak --user
+flatpak install ./xmcl-[version]-x86_64.flatpak.flatpak --user
 ```
 
 ### 🚀 XMCL ausführen

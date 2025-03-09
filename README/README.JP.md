@@ -15,7 +15,7 @@ Linux システム用の Flatpak としてパッケージ化されたクロス�
 [XMCL](https://github.com/v1mkss/io.github.voxelum.xmcl/releases/latest) の最新リリースをダウンロードします。
 インストールするには、次のコマンドを実行します：
 ```sh
-flatpak install ./xmcl.flatpak --user
+flatpak install ./xmcl-[version]-x86_64.flatpak.flatpak --user
 ```
 
 ### 🚀 XMCLの実行
