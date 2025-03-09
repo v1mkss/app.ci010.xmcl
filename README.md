@@ -24,7 +24,7 @@ Download the latest release of [XMCL](https://github.com/v1mkss/io.github.voxelu
 
 To install, run:
 ```sh
-flatpak install ./xmcl-[version]-x86_64.flatpak.flatpak --user
+flatpak install ./xmcl-[version]-x86_64.flatpak --user
 ```
 
 ### 🚀 Running XMCL

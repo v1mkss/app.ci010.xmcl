@@ -16,7 +16,7 @@
 
 Для установки выполните:
 ```sh
-flatpak install ./xmcl-[version]-x86_64.flatpak.flatpak --user
+flatpak install ./xmcl-[version]-x86_64.flatpak --user
 ```
 
 ### 🚀 Запуск XMCL

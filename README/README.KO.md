@@ -15,7 +15,7 @@ Linux 시스템용 Flatpak으로 패키지된 크로스 플랫폼 Minecraft 런�
 [XMCL](https://github.com/v1mkss/io.github.voxelum.xmcl/releases/latest)의 최신 릴리스를 다운로드하세요.
 설치하려면 다음을 실행하세요:
 ```sh
-flatpak install ./xmcl-[version]-x86_64.flatpak.flatpak --user
+flatpak install ./xmcl-[version]-x86_64.flatpak --user
 ```
 
 
