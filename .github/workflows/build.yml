@@ -18,17 +18,15 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y flatpak flatpak-builder
-          flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
+          flatpak remote-add --user --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
 
       - name: Get latest XMCL release
         id: latest-release
         run: |
           RELEASE_INFO=$(curl -s https://api.github.com/repos/Voxelum/x-minecraft-launcher/releases/latest)
           VERSION=$(echo $RELEASE_INFO | jq -r '.tag_name' | sed 's/^v//')
-          # Явно фільтруємо лише amd64 (x86_64) версію
           DEB_URL=$(echo $RELEASE_INFO | jq -r '.assets[] | select(.name | endswith("-amd64.deb")) | .browser_download_url')
 
-          # Перевіряємо, чи знайдений URL не порожній
           if [ -z "$DEB_URL" ]; then
             echo "Error: Could not find x86_64 (amd64) release package"
             exit 1
@@ -44,7 +42,6 @@ jobs:
 
       - name: Update manifest
         run: |
-          # Додаємо явне обмеження на архітектуру x86_64
           jq --arg url "$DEB_URL" \
              --arg sha "$DEB_SHA256" \
              --arg ver "$VERSION" \
@@ -59,9 +56,8 @@ jobs:
       - name: Build Flatpak
         run: |
           mkdir -p xmcl
-          flatpak install -y flathub org.freedesktop.Platform//23.08 org.freedesktop.Sdk//23.08
-          # Додаємо обмеження на архітектуру при збірці
-          flatpak-builder --force-clean --arch=x86_64 build-dir io.github.voxelum.xmcl.json --repo=xmcl
+          flatpak install --user -y flathub org.freedesktop.Platform//23.08 org.freedesktop.Sdk//23.08
+          flatpak-builder --user --force-clean --arch=x86_64 build-dir io.github.voxelum.xmcl.json --repo=xmcl
           flatpak build-bundle xmcl xmcl-${{ env.VERSION }}-x86_64.flatpak io.github.voxelum.xmcl
 
       - name: Upload Flatpak bundle
