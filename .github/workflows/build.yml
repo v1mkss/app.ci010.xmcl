@@ -42,15 +42,15 @@ jobs:
 
       - name: Update manifest
         run: |
+          cat io.github.voxelum.xmcl.json
           jq --arg url "$DEB_URL" \
              --arg sha "$DEB_SHA256" \
-             --arg ver "$VERSION" \
              '.modules[1].sources[0].url = $url |
               .modules[1].sources[0].sha256 = $sha |
-              .modules[1].sources[0].dest-filename = "xmcl.deb" |
-              .["build-options"] = {"arch": ["x86_64"]}' \
-              io.github.voxelum.xmcl.json > io.github.voxelum.xmcl.updated.json
-          mv io.github.voxelum.xmcl.updated.json io.github.voxelum.xmcl.json
+              .modules[1].sources[0].dest-filename = "xmcl.deb"' \
+              io.github.voxelum.xmcl.json > updated.json
+
+          jq '.["build-options"] = {"arch": ["x86_64"]}' updated.json > io.github.voxelum.xmcl.json
           cat io.github.voxelum.xmcl.json
 
       - name: Build Flatpak
