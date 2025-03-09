@@ -19,13 +19,6 @@
 flatpak install ./xmcl.flatpak --user
 ```
 
-##### **选项 2**：从存储库构建
-
-###### 构建和安装
-```sh
-flatpak-builder --user --install --force-clean build-dir io.xmcl.XMCL.yml
-```
-
 ### 🚀 运行 XMCL
 从应用程序菜单启动 XMCL 或使用以下命令：
 ```sh

@@ -27,13 +27,6 @@ To install, run:
 flatpak install ./xmcl.flatpak --user
 ```
 
-##### **Option 2**: Build from Repository
-
-###### Build and Install
-```sh
-flatpak-builder --user --install --force-clean build-dir io.xmcl.XMCL.yml
-```
-
 ### 🚀 Running XMCL
 Launch XMCL from your application menu or use the following command:
 ```sh

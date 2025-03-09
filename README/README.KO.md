@@ -18,11 +18,6 @@ Linux 시스템용 Flatpak으로 패키지된 크로스 플랫폼 Minecraft 런�
 flatpak install ./xmcl.flatpak --user
 ```
 
-##### 옵션 2: 저장소에서 빌드
-###### 빌드 및 설치
-```sh
-flatpak-builder --user --install --force-clean build-dir io.xmcl.XMCL.yml
-```
 
 ### 🚀 XMCL 실행
 애플리케이션 메뉴에서 XMCL을 실행하거나 다음 명령어를 사용하세요:

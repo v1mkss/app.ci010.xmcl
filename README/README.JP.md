@@ -18,12 +18,6 @@ Linux システム用の Flatpak としてパッケージ化されたクロス�
 flatpak install ./xmcl.flatpak --user
 ```
 
-##### オプション2: リポジトリからビルド
-###### ビルドとインストール
-```sh
-flatpak-builder --user --install --force-clean build-dir io.xmcl.XMCL.yml
-```
-
 ### 🚀 XMCLの実行
 アプリケーションメニューから XMCL を起動するか、次のコマンドを使用します：
 ```sh
