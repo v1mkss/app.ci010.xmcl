@@ -29,34 +29,33 @@ jobs:
           RELEASE_INFO=$(curl -s https://api.github.com/repos/Voxelum/x-minecraft-launcher/releases/latest)
           VERSION=$(echo $RELEASE_INFO | jq -r '.tag_name' | sed 's/^v//')
           ORIGINAL_URL=$(echo $RELEASE_INFO | jq -r '.html_url')
-          DEB_URL=$(echo $RELEASE_INFO | jq -r '.assets[] | select(.name | endswith("-amd64.deb")) | .browser_download_url')
+          TARXZ_URL=$(echo $RELEASE_INFO | jq -r '.assets[] | select(.name | endswith("-x64.tar.xz")) | .browser_download_url')
 
-          if [ -z "$DEB_URL" ]; then
-            echo "Error: Could not find x86_64 (amd64) release package"
+          if [ -z "$TARXZ_URL" ]; then
+            echo "Error: Could not find x64 tar.xz release package"
             exit 1
           fi
 
-          DEB_SHA256=$(curl -sL $DEB_URL | sha256sum | cut -d ' ' -f 1)
+          TARXZ_SHA256=$(curl -sL $TARXZ_URL | sha256sum | cut -d ' ' -f 1)
           echo "VERSION=$VERSION" >> $GITHUB_ENV
-          echo "DEB_URL=$DEB_URL" >> $GITHUB_ENV
-          echo "DEB_SHA256=$DEB_SHA256" >> $GITHUB_ENV
+          echo "TARXZ_URL=$TARXZ_URL" >> $GITHUB_ENV
+          echo "TARXZ_SHA256=$TARXZ_SHA256" >> $GITHUB_ENV
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "original_url=$ORIGINAL_URL" >> $GITHUB_OUTPUT
-          echo "Downloaded latest x86_64 release: $VERSION"
-          echo "URL: $DEB_URL"
-          echo "SHA256: $DEB_SHA256"
+          echo "Downloaded latest x64 release: $VERSION"
+          echo "URL: $TARXZ_URL"
+          echo "SHA256: $TARXZ_SHA256"
 
       - name: Update manifest
         run: |
-          jq --arg url "$DEB_URL" \
-             --arg sha "$DEB_SHA256" \
-             'reduce paths(objects | select(.name? == "xmcl" and .sources)) as $p (.;
+          jq --arg url "$TARXZ_URL" \
+             --arg sha "$TARXZ_SHA256" \
+             'reduce paths(objects | select(.name? == "XMCL" and .sources)) as $p (.;
                setpath($p + ["sources", 0, "url"]; $url) |
-               setpath($p + ["sources", 0, "sha256"]; $sha) |
-               setpath($p + ["sources", 0, "dest-filename"]; "xmcl.deb"))' \
+               setpath($p + ["sources", 0, "sha256"]; $sha))' \
                io.github.voxelum.XMCL.yaml > updated.json
 
-          jq '.["build-options"] = {"arch": ["x86_64"]}' updated.json > io.github.voxelum.XMCL.yaml
+          mv updated.json io.github.voxelum.XMCL.yaml
 
       - name: Build Flatpak
         run: |
