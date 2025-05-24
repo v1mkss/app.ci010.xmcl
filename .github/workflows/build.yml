@@ -51,44 +51,29 @@ jobs:
           sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
           sudo chmod a+x /usr/local/bin/yq
 
-      - name: "Debug - List repo files after checkout"
-        run: |
-          echo "Listing all files in repo:"
-          ls -lR
-          echo "Listing manifest directory:"
-          ls -l io.github.voxelum.xmcl || true
-
-      - name: Check manifest file exists
-        run: |
-          if [ ! -f io.github.voxelum.XMCL.yaml ]; then
-            echo "ERROR: Manifest file is missing!"
-            exit 1
-          fi
-          echo "Manifest file found."
-
       - name: Update manifest
         run: |
+          echo "Current directory:"
+          pwd
+          echo "Files in current directory:"
+          ls -la
+          cp io.github.voxelum.xmcl/io.github.voxelum.XMCL.yaml io.github.voxelum.XMCL.yaml
           yq -i '.modules[] | select(.name == "XMCL").sources[0].url = strenv(TARXZ_URL)' io.github.voxelum.XMCL.yaml
           yq -i '.modules[] | select(.name == "XMCL").sources[0].sha256 = strenv(TARXZ_SHA256)' io.github.voxelum.XMCL.yaml
-
-      - name: "Debug - Show manifest file before build"
-        run: |
-          echo "Manifest file content:"
+          echo "Updated manifest content:"
           cat io.github.voxelum.XMCL.yaml
-          echo "File size:"
-          ls -lh io.github.voxelum.XMCL.yaml
 
       - name: Build Flatpak
         run: |
           mkdir -p xmcl
           flatpak install --user -y flathub org.freedesktop.Platform//23.08 org.freedesktop.Sdk//23.08
-          flatpak-builder --user --force-clean --arch=x86_64 build-dir io.github.voxelum.XMCL.yaml --repo=XMCL
-          flatpak build-bundle XMCL XMCL-${{ env.VERSION }}-x86_64.flatpak io.github.voxelum.XMCL
+          flatpak-builder --user --force-clean --arch=x86_64 build-dir io.github.voxelum.XMCL.yaml --repo=xmcl
+          flatpak build-bundle xmcl XMCL-${{ env.VERSION }}-x86_64.flatpak io.github.voxelum.XMCL
 
       - name: Upload Flatpak bundle
         uses: actions/upload-artifact@v4
         with:
-          name: XMCL-flatpak-x86_64
+          name: XMCL-${{ env.VERSION }}-flatpak-x86_64
           path: XMCL-${{ env.VERSION }}-x86_64.flatpak
 
   release:
@@ -102,7 +87,7 @@ jobs:
       - name: Download artifacts
         uses: actions/download-artifact@v4
         with:
-          name: XMCL-flatpak-x86_64
+          name: XMCL-${{ needs.build.outputs.version }}-flatpak-x86_64
 
       - name: Get current date
         id: date
