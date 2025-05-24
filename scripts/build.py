@@ -9,10 +9,10 @@ from pathlib import Path
 # --- Configuration ---
 BUILDER = "flatpak-builder"
 REPO_NAME = "XMCL"
-BUILD_DIR = "builddir"
+BUILD_DIR = "build-dir"
 MANIFEST = "io.github.voxelum.XMCL.yaml"
 
-# Get the project root directory (one level up from scripts directory)
+# Get the project root directory
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
 # --- Logging Setup ---
