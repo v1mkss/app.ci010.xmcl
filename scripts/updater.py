@@ -2,14 +2,14 @@ import sys
 import re
 import logging
 import requests
-import json
 import yaml
 from pathlib import Path
 import shutil
 
 # --- Configuration ---
-JSON_FILENAME = "io.github.voxelum.xmcl.json"
-YAML_FILENAME = "io.github.voxelum.xmcl.yaml"
+MANIFEST = "io.github.voxelum.xmcl.yaml"
+# Get the project root directory (one level up from scripts directory)
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
 REPO_OWNER = "Voxelum"
 REPO_NAME = "x-minecraft-launcher"
 
@@ -31,29 +31,7 @@ def error_exit(message: str, exit_code: int = 1):
     logging.error(message)
     sys.exit(exit_code)
 
-def get_current_version_from_json(file_path: Path) -> str | None:
-    """Gets the current version from the JSON file."""
-    logging.info(f"Checking current version in {file_path}...")
-    try:
-        with file_path.open('r', encoding='utf-8') as f:
-            data = json.load(f)
-            for module in data.get('modules', []):
-                if module.get('name') == 'xmcl':
-                    for source in module.get('sources', []):
-                        url = source.get('url', '')
-                        if 'xmcl-' in url and '.tar.xz' in url:
-                            version = re.search(r'xmcl-(\d+\.\d+\.\d+)-x64\.tar\.xz', url)
-                            if version:
-                                version = version.group(1)
-                                logging.info(f"Current version found: {version}")
-                                return version
-            logging.warning(f"Could not find current version in {file_path}.")
-            return None
-    except (IOError, json.JSONDecodeError) as e:
-        error_exit(f"Failed to read {file_path}: {e}")
-        return None
-
-def get_current_version_from_yaml(file_path: Path) -> str | None:
+def get_current_version(file_path: Path) -> str | None:
     """Gets the current version from the YAML file."""
     logging.info(f"Checking current version in {file_path}...")
     try:
@@ -136,45 +114,7 @@ def get_sha256_for_tag(tag: str) -> str:
         error_exit(f"Network error fetching SHA256: {e}\nURL: {sha256_url}")
     return ""
 
-def update_json_file(file_path: Path, new_version: str, new_sha256: str):
-    """Updates the version and sha256 in the JSON file."""
-    backup_path = file_path.with_suffix(file_path.suffix + '.bak')
-
-    try:
-        with file_path.open('r', encoding='utf-8') as f:
-            data = json.load(f)
-
-        # Create backup before modification
-        logging.info(f"Creating backup: {backup_path}")
-        shutil.copy2(file_path, backup_path)
-
-        # Update version and sha256
-        for module in data.get('modules', []):
-            if module.get('name') == 'xmcl':
-                for source in module.get('sources', []):
-                    if 'xmcl-' in source.get('url', '') and '.tar.xz' in source['url']:
-                        source['url'] = f"https://github.com/{REPO_OWNER}/{REPO_NAME}/releases/download/v{new_version}/xmcl-{new_version}-{ARCH}.tar.xz"
-                        source['sha256'] = new_sha256
-
-        # Write updated content
-        with file_path.open('w', encoding='utf-8') as f:
-            json.dump(data, f, indent=2)
-
-        logging.info(f"\033[32mSuccessfully updated {file_path}\033[0m")
-        backup_path.unlink()
-        logging.info(f"Removed backup file: {backup_path}")
-
-    except Exception as e:
-        logging.error(f"Error updating JSON file {file_path}: {e}")
-        if backup_path.exists():
-            try:
-                shutil.move(backup_path, file_path)
-                logging.info("Restored from backup successfully.")
-            except Exception as restore_err:
-                logging.error(f"Failed to restore from backup: {restore_err}")
-        error_exit("File update failed.", 2)
-
-def update_yaml_file(file_path: Path, new_version: str, new_sha256: str):
+def update_manifest(file_path: Path, new_version: str, new_sha256: str):
     """Updates the version and sha256 in the YAML file."""
     backup_path = file_path.with_suffix(file_path.suffix + '.bak')
 
@@ -212,27 +152,15 @@ def update_yaml_file(file_path: Path, new_version: str, new_sha256: str):
                 logging.error(f"Failed to restore from backup: {restore_err}")
         error_exit("File update failed.", 2)
 
-def update_files(json_path: Path, yaml_path: Path, new_version: str, new_sha256: str):
-    """Updates both JSON and YAML files if they exist."""
-    if json_path.is_file():
-        update_json_file(json_path, new_version, new_sha256)
-    if yaml_path.is_file():
-        update_yaml_file(yaml_path, new_version, new_sha256)
-
 def main():
     """Main script logic."""
-    json_file = Path(JSON_FILENAME)
-    yaml_file = Path(YAML_FILENAME)
+    manifest_file = PROJECT_ROOT / MANIFEST
 
-    if not json_file.is_file() and not yaml_file.is_file():
-        error_exit(f"Neither {json_file} nor {yaml_file} found.")
+    if not manifest_file.is_file():
+        error_exit(f"Manifest file not found: {manifest_file}")
 
-    # Get current version from either file
-    current_version = None
-    if json_file.is_file():
-        current_version = get_current_version_from_json(json_file)
-    if current_version is None and yaml_file.is_file():
-        current_version = get_current_version_from_yaml(yaml_file)
+    # Get current version
+    current_version = get_current_version(manifest_file)
 
     # Get latest version from GitHub
     latest_tag = get_latest_tag_from_github()
@@ -244,9 +172,9 @@ def main():
         logging.info(f"\033[32mVersion {latest_version} is already up-to-date. No update needed.\033[0m")
         sys.exit(0)
 
-    # Update files
+    # Update manifest
     new_sha256 = get_sha256_for_tag(latest_tag)
-    update_files(json_file, yaml_file, latest_version, new_sha256)
+    update_manifest(manifest_file, latest_version, new_sha256)
 
     logging.info("\033[32mUpdate process finished.\033[0m")
 
@@ -255,6 +183,6 @@ if __name__ == "__main__":
         import requests
         import yaml
     except ImportError as e:
-        error_exit(f"Required Python package not installed: {e}. Please install it (e.g., 'pip install {e.name}').")
+        error_exit(f"Required Python package not installed: {e}. Please install it with: pip install {e.name}")
 
     main()

@@ -1,3 +1,7 @@
-.flatpak-builder
-build-dir
 xmcl
+
+build-dir
+builddir
+
+.flatpak-builder
+.ropeproject
