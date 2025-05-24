@@ -51,23 +51,39 @@ jobs:
           sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
           sudo chmod a+x /usr/local/bin/yq
 
+      - name: "Debug - List repo files after checkout"
+        run: |
+          echo "Listing all files in repo:"
+          ls -lR
+          echo "Listing manifest directory:"
+          ls -l io.github.voxelum.xmcl || true
+
+      - name: Check manifest file exists
+        run: |
+          if [ ! -f io.github.voxelum.XMCL.yaml ]; then
+            echo "ERROR: Manifest file is missing!"
+            exit 1
+          fi
+          echo "Manifest file found."
+
       - name: Update manifest
         run: |
-          yq -i '.modules[] | select(.name == "XMCL").sources[0].url = strenv(TARXZ_URL)' io.github.voxelum.xmcl/io.github.voxelum.XMCL.yaml
-          yq -i '.modules[] | select(.name == "XMCL").sources[0].sha256 = strenv(TARXZ_SHA256)' io.github.voxelum.xmcl/io.github.voxelum.XMCL.yaml
+          yq -i '.modules[] | select(.name == "XMCL").sources[0].url = strenv(TARXZ_URL)' io.github.voxelum.XMCL.yaml
+          yq -i '.modules[] | select(.name == "XMCL").sources[0].sha256 = strenv(TARXZ_SHA256)' io.github.voxelum.XMCL.yaml
 
-      - name: Show manifest file before build
+      - name: "Debug - Show manifest file before build"
         run: |
           echo "Manifest file content:"
-          cat io.github.voxelum.xmcl/io.github.voxelum.XMCL.yaml
+          cat io.github.voxelum.XMCL.yaml
           echo "File size:"
-          ls -lh io.github.voxelum.xmcl/io.github.voxelum.XMCL.yaml
+          ls -lh io.github.voxelum.XMCL.yaml
 
       - name: Build Flatpak
         run: |
           mkdir -p xmcl
           flatpak install --user -y flathub org.freedesktop.Platform//23.08 org.freedesktop.Sdk//23.08
-          flatpak-builder --user --force-clean --arch=x86_64 build-dir io.github.voxelum.xmcl/io.github.voxelum.XMCL.yaml --repo=XMCL
+          flatpak-builder --user --force-clean --arch=x86_64 build-dir
+          io.github.voxelum.XMCL.yaml --repo=XMCL
           flatpak build-bundle XMCL XMCL-${{ env.VERSION }}-x86_64.flatpak io.github.voxelum.XMCL
 
       - name: Upload Flatpak bundle
