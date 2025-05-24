@@ -1,4 +1,4 @@
-app-id: io.github.voxelum.xmcl
+app-id: io.github.voxelum.XMCL
 runtime: org.freedesktop.Platform
 runtime-version: "23.08"
 sdk: org.freedesktop.Sdk
@@ -7,10 +7,8 @@ finish-args:
   - --share=ipc
   - --share=network
   - --socket=x11
-  - --socket=wayland
   - --socket=pulseaudio
   - --device=dri
-  - --device=all
   - --filesystem=home
   - --filesystem=xdg-run/pipewire-0
   - --filesystem=xdg-run/discord-ipc-0:ro
@@ -23,6 +21,7 @@ finish-args:
   - --system-talk-name=net.hadess.SwitcherooControl
   - --env=ELECTRON_ENABLE_STACK_DUMPING=false
   - --env=ELECTRON_ENABLE_LOGGING=false
+
 modules:
   - name: xrandr
     sources:
@@ -34,7 +33,8 @@ modules:
     buildsystem: simple
     build-commands: [cp /usr/bin/glxinfo /app/bin/ || true]
     sources: []
-  - name: xmcl
+
+  - name: XMCL
     buildsystem: simple
     build-commands:
       - mkdir -p /app/bin
@@ -46,12 +46,12 @@ modules:
       - chmod +x /app/opt/xmcl/xmcl
       - cp fonts.conf /app/share/fontconfig/conf.d/10-xmcl-fonts.conf || true
       - mkdir -p /app/share/icons/hicolor/512x512/apps
-      - cp io.github.voxelum.xmcl.png /app/share/icons/hicolor/512x512/apps/io.github.voxelum.xmcl.png
-      - chmod 644 /app/share/icons/hicolor/512x512/apps/io.github.voxelum.xmcl.png
-      - cp xmcl.desktop /app/share/applications/io.github.voxelum.xmcl.desktop
-      - chmod 644 /app/share/applications/io.github.voxelum.xmcl.desktop
-      - sed -i 's|Exec=xmcl|Exec=/app/bin/xmcl-wrapper.sh|g' /app/share/applications/io.github.voxelum.xmcl.desktop
-      - sed -i 's|Icon=xmcl|Icon=io.github.voxelum.xmcl|g' /app/share/applications/io.github.voxelum.xmcl.desktop
+      - cp io.github.voxelum.xmcl.png /app/share/icons/hicolor/512x512/apps/io.github.voxelum.XMCL.png
+      - chmod 644 /app/share/icons/hicolor/512x512/apps/io.github.voxelum.XMCL.png
+      - cp xmcl.desktop /app/share/applications/io.github.voxelum.XMCL.desktop
+      - chmod 644 /app/share/applications/io.github.voxelum.XMCL.desktop
+      - sed -i 's|Exec=xmcl|Exec=/app/bin/xmcl-wrapper.sh|g' /app/share/applications/io.github.voxelum.XMCL.desktop
+      - sed -i 's|Icon=xmcl|Icon=io.github.voxelum.XMCL|g' /app/share/applications/io.github.voxelum.XMCL.desktop
       - printf '#!/bin/sh\nexport LD_LIBRARY_PATH=/app/opt/xmcl:$LD_LIBRARY_PATH\nexport FONTCONFIG_PATH=/app/share/fontconfig\nexport FONTCONFIG_FILE=/app/share/fontconfig/conf.d/10-xmcl-fonts.conf\nexport GTK_USE_PORTAL=1\nexport APPIMAGE=1\nunset JAVA_HOME\nexec /app/opt/xmcl/xmcl --enable-webrtc-pipewire-capturer --no-sandbox "$@"\n' > /app/bin/xmcl-wrapper.sh
       - chmod +x /app/bin/xmcl-wrapper.sh
     sources:

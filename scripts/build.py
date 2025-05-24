@@ -49,13 +49,8 @@ def build_flatpak(args):
     os.chdir(PROJECT_ROOT)  # Change to project root directory
     cmd = [BUILDER]
 
-    # Add optional arguments
-    if args.force_clean:
-        cmd.append("--force-clean")
-    if args.user:
-        cmd.append("--user")
-    if args.install:
-        cmd.append("--install")
+    # Always use these flags
+    cmd.extend(["--force-clean", "--install", "--user"])
 
     # Add required arguments
     cmd.extend([
@@ -75,14 +70,8 @@ def build_flatpak(args):
 
 def parse_args():
     """Parses command line arguments."""
-    parser = argparse.ArgumentParser(description="Build XMCL Flatpak package")
-    parser.add_argument("--force-clean", action="store_true",
-                       help="Start with a clean build directory")
-    parser.add_argument("--user", action="store_true",
-                       help="Install in user mode")
-    parser.add_argument("--install", action="store_true",
-                       help="Install the package after building")
-    return parser.parse_args()
+    # No arguments needed since flags are always used
+    return argparse.Namespace(force_clean=True, install=True, user=True)
 
 def main():
     """Main execution function."""
