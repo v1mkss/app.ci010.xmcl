@@ -54,16 +54,16 @@ jobs:
                setpath($p + ["sources", 0, "url"]; $url) |
                setpath($p + ["sources", 0, "sha256"]; $sha) |
                setpath($p + ["sources", 0, "dest-filename"]; "xmcl.deb"))' \
-               io.github.voxelum.xmcl.json > updated.json
+               io.github.voxelum.XMCL.yaml > updated.json
 
-          jq '.["build-options"] = {"arch": ["x86_64"]}' updated.json > io.github.voxelum.xmcl.json
+          jq '.["build-options"] = {"arch": ["x86_64"]}' updated.json > io.github.voxelum.XMCL.yaml
 
       - name: Build Flatpak
         run: |
           mkdir -p xmcl
           flatpak install --user -y flathub org.freedesktop.Platform//23.08 org.freedesktop.Sdk//23.08
-          flatpak-builder --user --force-clean --arch=x86_64 build-dir io.github.voxelum.xmcl.json --repo=xmcl
-          flatpak build-bundle xmcl xmcl-${{ env.VERSION }}-x86_64.flatpak io.github.voxelum.xmcl
+          flatpak-builder --user --force-clean --arch=x86_64 build-dir io.github.voxelum.XMCL.yaml --repo=xmcl
+          flatpak build-bundle xmcl xmcl-${{ env.VERSION }}-x86_64.flatpak io.github.voxelum.XMCL
 
       - name: Upload Flatpak bundle
         uses: actions/upload-artifact@v4
