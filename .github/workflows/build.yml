@@ -53,11 +53,6 @@ jobs:
 
       - name: Update manifest
         run: |
-          echo "Current directory:"
-          pwd
-          echo "Files in current directory:"
-          ls -la
-          cp io.github.voxelum.xmcl/io.github.voxelum.XMCL.yaml io.github.voxelum.XMCL.yaml
           yq -i '.modules[] | select(.name == "XMCL").sources[0].url = strenv(TARXZ_URL)' io.github.voxelum.XMCL.yaml
           yq -i '.modules[] | select(.name == "XMCL").sources[0].sha256 = strenv(TARXZ_SHA256)' io.github.voxelum.XMCL.yaml
           echo "Updated manifest content:"
