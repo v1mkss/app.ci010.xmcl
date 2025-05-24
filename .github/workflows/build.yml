@@ -56,6 +56,13 @@ jobs:
           yq -i '.modules[] | select(.name == "XMCL").sources[0].url = strenv(TARXZ_URL)' io.github.voxelum.XMCL.yaml
           yq -i '.modules[] | select(.name == "XMCL").sources[0].sha256 = strenv(TARXZ_SHA256)' io.github.voxelum.XMCL.yaml
 
+      - name: Show manifest file before build
+        run: |
+          echo "Manifest file content:"
+          cat io.github.voxelum.XMCL.yaml
+          echo "File size:"
+          ls -lh io.github.voxelum.XMCL.yaml
+
       - name: Build Flatpak
         run: |
           mkdir -p xmcl
@@ -66,7 +73,7 @@ jobs:
       - name: Upload Flatpak bundle
         uses: actions/upload-artifact@v4
         with:
-          name: XMCL-${{ env.VERSION }}-flatpak-x86_64
+          name: XMCL-flatpak-x86_64
           path: XMCL-${{ env.VERSION }}-x86_64.flatpak
 
   release:
