@@ -61,13 +61,13 @@ jobs:
           mkdir -p xmcl
           flatpak install --user -y flathub org.freedesktop.Platform//23.08 org.freedesktop.Sdk//23.08
           flatpak-builder --user --force-clean --arch=x86_64 build-dir io.github.voxelum.XMCL.yaml --repo=xmcl
-          flatpak build-bundle xmcl xmcl-${{ env.VERSION }}-x86_64.flatpak io.github.voxelum.XMCL
+          flatpak build-bundle XMCL XMCL-${{ env.VERSION }}-x86_64.flatpak io.github.voxelum.XMCL
 
       - name: Upload Flatpak bundle
         uses: actions/upload-artifact@v4
         with:
-          name: xmcl-flatpak-x86_64
-          path: xmcl-${{ env.VERSION }}-x86_64.flatpak
+          name: XMCL-${{ env.VERSION }}-flatpak-x86_64
+          path: XMCL-${{ env.VERSION }}-x86_64.flatpak
 
   release:
     needs: build
@@ -80,7 +80,7 @@ jobs:
       - name: Download artifacts
         uses: actions/download-artifact@v4
         with:
-          name: xmcl-flatpak-x86_64
+          name: XMCL-flatpak-x86_64
 
       - name: Get current date
         id: date
@@ -98,4 +98,4 @@ jobs:
           draft: false
           make_latest: true
           files: |
-            xmcl-*-x86_64.flatpak
+            XMCL-*-x86_64.flatpak
