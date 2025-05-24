@@ -46,15 +46,15 @@ jobs:
           echo "URL: $TARXZ_URL"
           echo "SHA256: $TARXZ_SHA256"
 
+      - name: Install yq
+        run: |
+          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+          sudo chmod a+x /usr/local/bin/yq
+
       - name: Update manifest
         run: |
-          cat io.github.voxelum.XMCL.yaml | jq --arg url "$TARXZ_URL" \
-             --arg sha "$TARXZ_SHA256" \
-             'reduce paths(objects | select(.name? == "XMCL" and .sources)) as $p (.;
-               setpath($p + ["sources", 0, "url"]; $url) |
-               setpath($p + ["sources", 0, "sha256"]; $sha))' > updated.json
-
-          mv updated.json io.github.voxelum.XMCL.yaml
+          yq -i '.modules[] | select(.name == "XMCL").sources[0].url = strenv(TARXZ_URL)' io.github.voxelum.XMCL.yaml
+          yq -i '.modules[] | select(.name == "XMCL").sources[0].sha256 = strenv(TARXZ_SHA256)' io.github.voxelum.XMCL.yaml
 
       - name: Build Flatpak
         run: |
