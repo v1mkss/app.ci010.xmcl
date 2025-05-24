@@ -48,12 +48,11 @@ jobs:
 
       - name: Update manifest
         run: |
-          jq --arg url "$TARXZ_URL" \
+          cat io.github.voxelum.XMCL.yaml | jq --arg url "$TARXZ_URL" \
              --arg sha "$TARXZ_SHA256" \
              'reduce paths(objects | select(.name? == "XMCL" and .sources)) as $p (.;
                setpath($p + ["sources", 0, "url"]; $url) |
-               setpath($p + ["sources", 0, "sha256"]; $sha))' \
-               io.github.voxelum.XMCL.yaml > updated.json
+               setpath($p + ["sources", 0, "sha256"]; $sha))' > updated.json
 
           mv updated.json io.github.voxelum.XMCL.yaml
 
