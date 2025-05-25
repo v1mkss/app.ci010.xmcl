@@ -64,27 +64,27 @@ jobs:
       - name: Update manifest
         run: |
           # Create backup of original file
-          cp io.github.voxelum.xmcl.yaml io.github.voxelum.xmcl.yaml.bak
+          cp io.github.voxelum.XMCL.yaml io.github.voxelum.XMCL.yaml.bak
 
           # Update the manifest file
-          yq -i '.modules[] | select(.name == "XMCL").sources[-1].url = strenv(TARXZ_URL)' io.github.voxelum.xmcl.yaml
-          yq -i '.modules[] | select(.name == "XMCL").sources[-1].sha256 = strenv(TARXZ_SHA256)' io.github.voxelum.xmcl.yaml
+          yq -i '.modules[] | select(.name == "XMCL").sources[-1].url = strenv(TARXZ_URL)' io.github.voxelum.XMCL.yaml
+          yq -i '.modules[] | select(.name == "XMCL").sources[-1].sha256 = strenv(TARXZ_SHA256)' io.github.voxelum.XMCL.yaml
 
           # Verify the file is not empty
-          if [ ! -s io.github.voxelum.xmcl.yaml ]; then
+          if [ ! -s io.github.voxelum.XMCL.yaml ]; then
             echo "Error: Manifest file became empty after yq update. Restoring backup..."
-            cp io.github.voxelum.xmcl.yaml.bak io.github.voxelum.xmcl.yaml
+            cp io.github.voxelum.XMCL.yaml.bak io.github.voxelum.XMCL.yaml
             exit 1
           fi
 
           echo "Updated manifest content:"
-          cat io.github.voxelum.xmcl.yaml
+          cat io.github.voxelum.XMCL.yaml
 
       - name: Build Flatpak
         run: |
           mkdir -p xmcl
           flatpak install --user -y flathub org.freedesktop.Platform//23.08 org.freedesktop.Sdk//23.08
-          flatpak-builder --user --force-clean --arch=x86_64 build-dir io.github.voxelum.xmcl.yaml --repo=xmcl
+          flatpak-builder --user --force-clean --arch=x86_64 build-dir io.github.voxelum.XMCL.yaml --repo=xmcl
           flatpak build-bundle xmcl XMCL-${{ env.VERSION }}-x86_64.flatpak io.github.voxelum.XMCL
 
       - name: Upload Flatpak bundle
