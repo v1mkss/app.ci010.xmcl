@@ -67,7 +67,7 @@ modules:
 
       - type: archive
         url: https://github.com/Voxelum/x-minecraft-launcher/releases/download/v0.51.0/xmcl-0.51.0-x64.tar.xz
-        sha256: 538478f9f59a24acdd41ddb6d8612c5daa7c2985b4e06709ea7b67eb879dc27b
+        sha256: 4ed46f0cdac3945353a406c029e1bae9e151aeb859aabcf6f12dd3bcfdee2406
 
       - type: archive
         url: https://github.com/Voxelum/flatpak-metadata/releases/download/v0.51.0/archive.tar.gz
