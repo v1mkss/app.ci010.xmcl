@@ -8,7 +8,7 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, arch]
     outputs:
       version: ${{ steps.latest-release.outputs.version }}
       original_url: ${{ steps.latest-release.outputs.original_url }}
@@ -17,11 +17,14 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v4
 
+      - name: Setup dependencies
+        run: |
+          sudo pacman -Syu --noconfirm
+          sudo pacman -S --noconfirm flatpak flatpak-builder curl jq yq wget git
+
       - name: Setup Flatpak
         run: |
-          sudo apt-get update
-          sudo apt-get install -y flatpak flatpak-builder
-          flatpak remote-add --user --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
+          sudo flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
 
       - name: Get latest XMCL release
         id: latest-release
@@ -46,23 +49,30 @@ jobs:
           echo "URL: $TARXZ_URL"
           echo "SHA256: $TARXZ_SHA256"
 
-      - name: Install yq
-        run: |
-          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
-          sudo chmod a+x /usr/local/bin/yq
-
       - name: Update manifest
         run: |
-          yq -i '.modules[] | select(.name == "XMCL").sources[0].url = strenv(TARXZ_URL)' io.github.voxelum.XMCL.yaml
-          yq -i '.modules[] | select(.name == "XMCL").sources[0].sha256 = strenv(TARXZ_SHA256)' io.github.voxelum.XMCL.yaml
+          # Create backup of original file
+          cp io.github.voxelum.XMCL.yaml io.github.voxelum.XMCL.yaml.bak
+
+          # Update the manifest file
+          yq -i '.modules[] | select(.name == "XMCL").sources[-1].url = strenv(TARXZ_URL)' io.github.voxelum.XMCL.yaml
+          yq -i '.modules[] | select(.name == "XMCL").sources[-1].sha256 = strenv(TARXZ_SHA256)' io.github.voxelum.XMCL.yaml
+
+          # Verify the file is not empty
+          if [ ! -s io.github.voxelum.XMCL.yaml ]; then
+            echo "Error: Manifest file became empty after yq update. Restoring backup..."
+            cp io.github.voxelum.XMCL.yaml.bak io.github.voxelum.XMCL.yaml
+            exit 1
+          fi
+
           echo "Updated manifest content:"
           cat io.github.voxelum.XMCL.yaml
 
       - name: Build Flatpak
         run: |
           mkdir -p xmcl
-          flatpak install --user -y flathub org.freedesktop.Platform//23.08 org.freedesktop.Sdk//23.08
-          flatpak-builder --user --force-clean --arch=x86_64 build-dir io.github.voxelum.XMCL.yaml --repo=xmcl
+          flatpak install --noninteractive -y flathub org.freedesktop.Platform//24.08 org.freedesktop.Sdk//24.08
+          flatpak-builder --force-clean --arch=x86_64 build-dir io.github.voxelum.XMCL.yaml --repo=xmcl
           flatpak build-bundle xmcl XMCL-${{ env.VERSION }}-x86_64.flatpak io.github.voxelum.XMCL
 
       - name: Upload Flatpak bundle
@@ -73,7 +83,7 @@ jobs:
 
   release:
     needs: build
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, arch]
     if: github.ref == 'refs/heads/main'
     permissions:
       contents: write
