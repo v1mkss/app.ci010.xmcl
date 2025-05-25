@@ -7,7 +7,7 @@ from pathlib import Path
 import shutil
 
 # --- Configuration ---
-MANIFEST = "io.github.voxelum.XMCL.yaml"
+MANIFEST = "app.ci010.xmcl.yaml"
 # Get the project root directory
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 REPO_OWNER = "Voxelum"
