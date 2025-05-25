@@ -67,8 +67,8 @@ jobs:
           cp io.github.voxelum.XMCL.yaml io.github.voxelum.XMCL.yaml.bak
 
           # Update the manifest file
-          yq -i '.modules[] | select(.name == "XMCL").sources[-1].url = strenv(TARXZ_URL)' io.github.voxelum.XMCL.yaml
-          yq -i '.modules[] | select(.name == "XMCL").sources[-1].sha256 = strenv(TARXZ_SHA256)' io.github.voxelum.XMCL.yaml
+          yq -i "(.modules[] | select(.name == \"XMCL\").sources[] | select(.type == \"archive\").url) = \"$TARXZ_URL\"" io.github.voxelum.XMCL.yaml
+          yq -i "(.modules[] | select(.name == \"XMCL\").sources[] | select(.type == \"archive\").sha256) = \"$TARXZ_SHA256\"" io.github.voxelum.XMCL.yaml
 
           # Verify the file is not empty
           if [ ! -s io.github.voxelum.XMCL.yaml ]; then
