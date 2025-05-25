@@ -10,7 +10,7 @@ from pathlib import Path
 BUILDER = "flatpak-builder"
 REPO_NAME = "XMCL"
 BUILD_DIR = "build-dir"
-MANIFEST = "app.ci010.xmcl.yaml"
+MANIFEST = "app.xmcl.voxelum.yaml"
 
 # Get the project root directory
 PROJECT_ROOT = Path(__file__).resolve().parent.parent

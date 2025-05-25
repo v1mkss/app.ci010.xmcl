@@ -79,7 +79,7 @@ jobs:
           path: |
             ~/.local/share/flatpak
             ~/.cache/flatpak
-          key: flatpak-deps-${{ runner.os }}-${{ hashFiles('app.ci010.xmcl.yaml') }}
+          key: flatpak-deps-${{ runner.os }}-${{ hashFiles('app.xmcl.voxelum.yaml') }}
 
       - name: Setup Flatpak
         if: steps.cache-flatpak.outputs.cache-hit != 'true'
@@ -135,28 +135,28 @@ jobs:
       - name: Update manifest
         run: |
           # Create backup of original file
-          cp app.ci010.xmcl.yaml app.ci010.xmcl.yaml.bak
+          cp app.xmcl.voxelum.yaml app.xmcl.voxelum.yaml.bak
 
           # Update the manifest file
-          yq -i "(.modules[] | select(.name == \"XMCL\").sources[] | select(.type == \"archive\").url) = \"$TARXZ_URL\"" app.ci010.xmcl.yaml
-          yq -i "(.modules[] | select(.name == \"XMCL\").sources[] | select(.type == \"archive\").sha256) = \"$TARXZ_SHA256\"" app.ci010.xmcl.yaml
+          yq -i "(.modules[] | select(.name == \"XMCL\").sources[] | select(.type == \"archive\").url) = \"$TARXZ_URL\"" app.xmcl.voxelum.yaml
+          yq -i "(.modules[] | select(.name == \"XMCL\").sources[] | select(.type == \"archive\").sha256) = \"$TARXZ_SHA256\"" app.xmcl.voxelum.yaml
 
           # Verify the file is not empty
-          if [ ! -s app.ci010.xmcl.yaml ]; then
+          if [ ! -s app.xmcl.voxelum.yaml ]; then
             echo "Error: Manifest file became empty after yq update. Restoring backup..."
-            cp app.ci010.xmcl.yaml.bak app.ci010.xmcl.yaml
+            cp app.xmcl.voxelum.yaml.bak app.xmcl.voxelum.yaml
             exit 1
           fi
 
           echo "Updated manifest content:"
-          cat app.ci010.xmcl.yaml
+          cat app.xmcl.voxelum.yaml
 
       - name: Build Flatpak
         run: |
           mkdir -p xmcl
           flatpak install --user -y flathub org.freedesktop.Platform//24.08 org.freedesktop.Sdk//24.08
-          flatpak-builder --user --force-clean --arch=x86_64 build-dir app.ci010.xmcl.yaml --repo=xmcl
-          flatpak build-bundle xmcl XMCL-${{ env.VERSION }}-x86_64.flatpak app.ci010.xmcl
+          flatpak-builder --user --force-clean --arch=x86_64 build-dir app.xmcl.voxelum.yaml --repo=xmcl
+          flatpak build-bundle xmcl XMCL-${{ env.VERSION }}-x86_64.flatpak app.xmcl.voxelum
 
       - name: Upload Flatpak bundle
         uses: actions/upload-artifact@v4

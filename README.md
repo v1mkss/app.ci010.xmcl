@@ -30,7 +30,7 @@ flatpak install ./xmcl-[version]-x86_64.flatpak --user
 ### 🚀 Running XMCL
 Launch XMCL from your application menu or use the following command:
 ```sh
-flatpak run io.github.voxelum.xmcl
+flatpak run app.xmcl.voxelum
 ```
 
 ## 🤝 Contributing
