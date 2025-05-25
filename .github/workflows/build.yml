@@ -71,32 +71,61 @@ jobs:
             git \
             xz-utils
 
+      # Cache Flatpak dependencies
+      - name: Cache Flatpak dependencies
+        id: cache-flatpak
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.local/share/flatpak
+            ~/.cache/flatpak
+          key: flatpak-deps-${{ runner.os }}-${{ hashFiles('io.github.voxelum.XMCL.yaml') }}
+
       - name: Setup Flatpak
+        if: steps.cache-flatpak.outputs.cache-hit != 'true'
         run: |
           flatpak remote-add --user --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
+
+      # Cache XMCL release package
+      - name: Cache XMCL Release
+        id: cache-xmcl
+        uses: actions/cache@v4
+        with:
+          path: xmcl-package
+          key: xmcl-${{ needs.check-upstream.outputs.version }}
 
       - name: Get latest XMCL release
         id: latest-release
         run: |
-          RELEASE_INFO=$(curl -s https://api.github.com/repos/Voxelum/x-minecraft-launcher/releases/latest)
-          VERSION=$(echo $RELEASE_INFO | jq -r '.tag_name' | sed 's/^v//')
-          ORIGINAL_URL=$(echo $RELEASE_INFO | jq -r '.html_url')
-          TARXZ_URL=$(echo $RELEASE_INFO | jq -r '.assets[] | select(.name | endswith("-x64.tar.xz")) | .browser_download_url')
+          mkdir -p xmcl-package
 
-          if [ -z "$TARXZ_URL" ]; then
-            echo "Error: Could not find x64 tar.xz release package"
-            exit 1
+          if [ "${{ steps.cache-xmcl.outputs.cache-hit }}" != 'true' ]; then
+            RELEASE_INFO=$(curl -s https://api.github.com/repos/Voxelum/x-minecraft-launcher/releases/latest)
+            VERSION=$(echo $RELEASE_INFO | jq -r '.tag_name' | sed 's/^v//')
+            ORIGINAL_URL=$(echo $RELEASE_INFO | jq -r '.html_url')
+            TARXZ_URL=$(echo $RELEASE_INFO | jq -r '.assets[] | select(.name | endswith("-x64.tar.xz")) | .browser_download_url')
+
+            if [ -z "$TARXZ_URL" ]; then
+              echo "Error: Could not find x64 tar.xz release package"
+              exit 1
+            fi
+
+            # Download and store in cache directory
+            wget -O xmcl-package/xmcl.tar.xz $TARXZ_URL
+            echo "$(sha256sum xmcl-package/xmcl.tar.xz | cut -d ' ' -f 1)" > xmcl-package/sha256sum
+            echo "$VERSION" > xmcl-package/version
+            echo "$ORIGINAL_URL" > xmcl-package/url
           fi
 
-          TARXZ_SHA256=$(curl -sL $TARXZ_URL | sha256sum | cut -d ' ' -f 1)
+          # Read from cache
+          VERSION=$(cat xmcl-package/version)
+          TARXZ_SHA256=$(cat xmcl-package/sha256sum)
+
           echo "VERSION=$VERSION" >> $GITHUB_ENV
-          echo "TARXZ_URL=$TARXZ_URL" >> $GITHUB_ENV
+          echo "TARXZ_URL=file://$(pwd)/xmcl-package/xmcl.tar.xz" >> $GITHUB_ENV
           echo "TARXZ_SHA256=$TARXZ_SHA256" >> $GITHUB_ENV
           echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "original_url=$ORIGINAL_URL" >> $GITHUB_OUTPUT
-          echo "Downloaded latest x64 release: $VERSION"
-          echo "URL: $TARXZ_URL"
-          echo "SHA256: $TARXZ_SHA256"
+          echo "original_url=$(cat xmcl-package/url)" >> $GITHUB_OUTPUT
 
       - name: Install yq
         run: |
@@ -168,5 +197,4 @@ jobs:
           make_latest: true
           files: |
             XMCL-*-x86_64.flatpak
-          # Delete existing asset with the same name if it exists
           delete_existing_assets: true
