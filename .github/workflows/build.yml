@@ -42,6 +42,12 @@ jobs:
           flatpak-builder --user --force-clean --arch=x86_64 build-dir app.xmcl.voxelum.yaml --repo=xmcl
           flatpak build-bundle xmcl XMCL-flatpak-x86_64.flatpak app.xmcl.voxelum
 
+      - name: Upload Flatpak bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: XMCL-${{ env.VERSION }}-flatpak-x86_64
+          path: XMCL-${{ env.VERSION }}-x86_64.flatpak
+
   release:
     needs: [build]
     runs-on: ubuntu-latest
@@ -51,7 +57,7 @@ jobs:
       - name: Download artifacts
         uses: actions/download-artifact@v4
         with:
-          name: XMCL-${{ needs.build.outputs.version }}-flatpak-x86_64
+          name: XMCL-${{ steps.latest-release.outputs.version }}-flatpak-x86_64
 
       - name: Get current date
         id: date
