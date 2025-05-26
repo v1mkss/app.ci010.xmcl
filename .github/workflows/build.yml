@@ -71,7 +71,7 @@ jobs:
             git \
             xz-utils
 
-      # Cache Flatpak dependencies
+      # Cache Flatpak dependencies and metadata
       - name: Cache Flatpak dependencies
         id: cache-flatpak
         uses: actions/cache@v4
@@ -79,6 +79,7 @@ jobs:
           path: |
             ~/.local/share/flatpak
             ~/.cache/flatpak
+            metadata
           key: flatpak-deps-${{ runner.os }}-${{ hashFiles('app.xmcl.voxelum.yaml') }}
 
       - name: Setup Flatpak
@@ -86,24 +87,28 @@ jobs:
         run: |
           flatpak remote-add --user --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
 
-      # Cache XMCL release package
+      # Cache XMCL release package and metadata
       - name: Cache XMCL Release
         id: cache-xmcl
         uses: actions/cache@v4
         with:
-          path: xmcl-package
+          path: |
+            xmcl-package
+            metadata-package
           key: xmcl-${{ needs.check-upstream.outputs.version }}
 
       - name: Get latest XMCL release
         id: latest-release
         run: |
           mkdir -p xmcl-package
+          mkdir -p metadata
 
           if [ "${{ steps.cache-xmcl.outputs.cache-hit }}" != 'true' ]; then
             RELEASE_INFO=$(curl -s https://api.github.com/repos/Voxelum/x-minecraft-launcher/releases/latest)
             VERSION=$(echo $RELEASE_INFO | jq -r '.tag_name' | sed 's/^v//')
             ORIGINAL_URL=$(echo $RELEASE_INFO | jq -r '.html_url')
             TARXZ_URL=$(echo $RELEASE_INFO | jq -r '.assets[] | select(.name | endswith("-x64.tar.xz")) | .browser_download_url')
+            METADATA_URL="https://github.com/Voxelum/flatpak-metadata/releases/download/v${VERSION}/archive.tar.gz"
 
             if [ -z "$TARXZ_URL" ]; then
               echo "Error: Could not find x64 tar.xz release package"
@@ -112,9 +117,21 @@ jobs:
 
             # Download and store in cache directory
             wget -O xmcl-package/xmcl.tar.xz $TARXZ_URL
+            wget -O metadata.tar.gz $METADATA_URL
+            
+            # Extract metadata
+            tar xf metadata.tar.gz -C metadata/
+            rm metadata.tar.gz
+            
             echo "$(sha256sum xmcl-package/xmcl.tar.xz | cut -d ' ' -f 1)" > xmcl-package/sha256sum
             echo "$VERSION" > xmcl-package/version
             echo "$ORIGINAL_URL" > xmcl-package/url
+          fi
+
+            # Extract metadata to the correct location
+            cd metadata-package
+            tar xf metadata.tar.gz
+            cd ..
           fi
 
           # Read from cache
