@@ -2,7 +2,9 @@ XMCL
 
 build-dir
 builddir
-*.tar.gz
 
 .flatpak-builder
 .ropeproject
+
+metadata
+*.tar.gz

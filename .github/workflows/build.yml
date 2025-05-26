@@ -2,59 +2,10 @@ name: Build XMCL Flatpak
 
 on:
   workflow_dispatch:
-  schedule:
-    - cron: "0 */6 * * *" # Check every 6 hours
 
 jobs:
-  check-upstream:
-    runs-on: ubuntu-latest
-    outputs:
-      has_new_version: ${{ steps.check-version.outputs.has_new_version }}
-      version: ${{ steps.check-version.outputs.version }}
-      url: ${{ steps.check-version.outputs.url }}
-
-    steps:
-      - name: Check XMCL latest release
-        id: check-version
-        uses: actions/github-script@v7
-        with:
-          script: |
-            try {
-              // Get latest upstream release
-              const { data: latest } = await github.rest.repos.getLatestRelease({
-                owner: 'Voxelum',
-                repo: 'x-minecraft-launcher'
-              });
-
-              // Get current repository releases
-              const { data: currentReleases } = await github.rest.repos.listReleases({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                per_page: 1
-              });
-
-              const upstreamVersion = latest.tag_name.replace('v', '');
-              const currentVersion = currentReleases[0]?.tag_name?.replace('flatpak-v', '') || '';
-
-              console.log(`Current version: ${currentVersion}`);
-              console.log(`Upstream version: ${upstreamVersion}`);
-
-              core.setOutput('version', upstreamVersion);
-              core.setOutput('url', latest.html_url);
-              core.setOutput('has_new_version', currentVersion !== upstreamVersion ? 'true' : 'false');
-
-            } catch (error) {
-              core.setFailed(`Error checking releases: ${error.message}`);
-            }
-
   build:
-    needs: check-upstream
-    if: needs.check-upstream.outputs.has_new_version == 'true' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
-    outputs:
-      version: ${{ needs.check-upstream.outputs.version }}
-      original_url: ${{ needs.check-upstream.outputs.url }}
-
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
@@ -62,16 +13,8 @@ jobs:
       - name: Setup dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y \
-            flatpak \
-            flatpak-builder \
-            curl \
-            jq \
-            wget \
-            git \
-            xz-utils
+          sudo apt-get install -y flatpak flatpak-builder curl wget git xz-utils
 
-      # Cache Flatpak dependencies and metadata
       - name: Cache Flatpak dependencies
         id: cache-flatpak
         uses: actions/cache@v4
@@ -79,163 +22,21 @@ jobs:
           path: |
             ~/.local/share/flatpak
             ~/.cache/flatpak
-            metadata
           key: flatpak-deps-${{ runner.os }}-${{ hashFiles('app.xmcl.voxelum.yaml') }}
 
-      - name: Setup Flatpak
+      - name: Setup Flatpak remote
         if: steps.cache-flatpak.outputs.cache-hit != 'true'
-        run: |
-          flatpak remote-add --user --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
-
-      # Cache XMCL release package and metadata
-      - name: Cache XMCL Release
-        id: cache-xmcl
-        uses: actions/cache@v4
-        with:
-          path: |
-            xmcl-package
-            metadata-package
-          key: xmcl-${{ needs.check-upstream.outputs.version }}
-
-      - name: Get latest XMCL release
-        id: latest-release
-        run: |
-          mkdir -p xmcl-package
-          mkdir -p metadata
-
-          if [ "${{ steps.cache-xmcl.outputs.cache-hit }}" != 'true' ]; then
-            RELEASE_INFO=$(curl -s https://api.github.com/repos/Voxelum/x-minecraft-launcher/releases/latest)
-            VERSION=$(echo $RELEASE_INFO | jq -r '.tag_name' | sed 's/^v//')
-            ORIGINAL_URL=$(echo $RELEASE_INFO | jq -r '.html_url')
-            TARXZ_URL=$(echo $RELEASE_INFO | jq -r '.assets[] | select(.name | endswith("-x64.tar.xz")) | .browser_download_url')
-            METADATA_URL="https://github.com/Voxelum/flatpak-metadata/releases/download/v${VERSION}/archive.tar.gz"
-
-            if [ -z "$TARXZ_URL" ]; then
-              echo "Error: Could not find x64 tar.xz release package"
-              exit 1
-            fi
-
-            # Download and store in cache directory
-            wget -O xmcl-package/xmcl.tar.xz $TARXZ_URL
-            wget -O metadata.tar.gz $METADATA_URL
-            
-            # Extract metadata
-            tar xf metadata.tar.gz -C metadata/
-            rm metadata.tar.gz
-            
-            echo "$(sha256sum xmcl-package/xmcl.tar.xz | cut -d ' ' -f 1)" > xmcl-package/sha256sum
-            echo "$VERSION" > xmcl-package/version
-            echo "$ORIGINAL_URL" > xmcl-package/url
-          fi
-
-            # Extract metadata to the correct location
-            cd metadata-package
-            tar xf metadata.tar.gz
-            cd ..
-          fi
-
-          # Read from cache
-          VERSION=$(cat xmcl-package/version)
-          TARXZ_SHA256=$(cat xmcl-package/sha256sum)
-
-          echo "VERSION=$VERSION" >> $GITHUB_ENV
-          echo "TARXZ_URL=file://$(pwd)/xmcl-package/xmcl.tar.xz" >> $GITHUB_ENV
-          echo "TARXZ_SHA256=$TARXZ_SHA256" >> $GITHUB_ENV
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "original_url=$(cat xmcl-package/url)" >> $GITHUB_OUTPUT
-
-      - name: Install yq
-        run: |
-          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
-          sudo chmod a+x /usr/local/bin/yq
-
-      - name: Update manifest
-        run: |
-          # Create backup of original file
-          cp app.xmcl.voxelum.yaml app.xmcl.voxelum.yaml.bak
-
-          # Update the manifest file
-          yq -i "(.modules[] | select(.name == \"XMCL\").sources[] | select(.type == \"archive\").url) = \"$TARXZ_URL\"" app.xmcl.voxelum.yaml
-          yq -i "(.modules[] | select(.name == \"XMCL\").sources[] | select(.type == \"archive\").sha256) = \"$TARXZ_SHA256\"" app.xmcl.voxelum.yaml
-
-          # Verify the file is not empty
-          if [ ! -s app.xmcl.voxelum.yaml ]; then
-            echo "Error: Manifest file became empty after yq update. Restoring backup..."
-            cp app.xmcl.voxelum.yaml.bak app.xmcl.voxelum.yaml
-            exit 1
-          fi
-
-          echo "Updated manifest content:"
-          cat app.xmcl.voxelum.yaml
+        run: flatpak remote-add --user --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
 
       - name: Build Flatpak
         run: |
-          mkdir -p xmcl
+          mkdir -p build-dir
           flatpak install --user -y flathub org.freedesktop.Platform//24.08 org.freedesktop.Sdk//24.08
           flatpak-builder --user --force-clean --arch=x86_64 build-dir app.xmcl.voxelum.yaml --repo=xmcl
-          flatpak build-bundle xmcl XMCL-${{ env.VERSION }}-x86_64.flatpak app.xmcl.voxelum
+          flatpak build-bundle xmcl XMCL-flatpak-x86_64.flatpak app.xmcl.voxelum
 
       - name: Upload Flatpak bundle
         uses: actions/upload-artifact@v4
         with:
-          name: XMCL-${{ env.VERSION }}-flatpak-x86_64
-          path: XMCL-${{ env.VERSION }}-x86_64.flatpak
-
-  release:
-    needs: [check-upstream, build]
-    runs-on: ubuntu-latest
-    if: needs.check-upstream.outputs.has_new_version == 'true' || github.event_name == 'workflow_dispatch'
-    permissions:
-      contents: write
-
-    steps:
-      - name: Download artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: XMCL-${{ needs.build.outputs.version }}-flatpak-x86_64
-
-      - name: Check existing release
-        id: check-release
-        uses: actions/github-script@v7
-        with:
-          script: |
-            try {
-              const tag = `flatpak-v${{ needs.build.outputs.version }}`;
-              const { data: releases } = await github.rest.repos.listReleases({
-                owner: context.repo.owner,
-                repo: context.repo.repo
-              });
-
-              const exists = releases.some(release => release.tag_name === tag);
-              if (exists) {
-                core.setOutput('exists', 'true');
-                core.notice(`Release ${tag} already exists, skipping creation`);
-              } else {
-                core.setOutput('exists', 'false');
-              }
-            } catch (error) {
-              core.setFailed(`Error checking releases: ${error.message}`);
-            }
-
-      - name: Get current date
-        id: date
-        if: steps.check-release.outputs.exists != 'true'
-        run: echo "CURRENT_DATE=$(date +'%Y%m%d')" >> $GITHUB_ENV
-
-      - name: Create GitHub Release
-        if: steps.check-release.outputs.exists != 'true'
-        uses: softprops/action-gh-release@v2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          name: v${{ needs.build.outputs.version }} - ${{ env.CURRENT_DATE }}
-          tag_name: v${{ needs.build.outputs.version }}
-          body: |
-            Flatpak build of XMCL v${{ needs.build.outputs.version }}
-
-            Built from: ${{ needs.check-upstream.outputs.url }}
-            Build date: ${{ env.CURRENT_DATE }}
-          draft: false
-          make_latest: true
-          files: |
-            XMCL-*-x86_64.flatpak
+          name: XMCL-flatpak-x86_64
+          path: XMCL-flatpak-x86_64.flatpak
